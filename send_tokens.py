@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import time
-
 from algosdk.v2client import algod
 from algosdk.v2client import indexer
 from algosdk import account
@@ -15,19 +14,17 @@ def connect_to_algo(connection_type=''):
         # TODO: return an instance of the v2client indexer. This is used for checking payments for tx_id's
         algod_address = "https://testnet-algorand.api.purestake.io/idx2"
         algo_indexer = indexer.IndexerClient("", algod_address, headers=purestake_token) # TL: GET THE INDEXER
- 
         return algo_indexer
+
     else:
         # TODO: return an instance of the client for sending transactions
         # Tutorial Link: https://developer.algorand.org/tutorials/creating-python-transaction-purestake-api/
         algod_address = "https://testnet-algorand.api.purestake.io/ps2"
         algo_client = algod.AlgodClient(algod_token, algod_address, headers=purestake_token) # TL: GET THE CLIENT
-
         return algo_client
 
-def send_tokens_algo( acl, sender_sk, txes):
-    params = acl.suggested_params
-    
+def send_tokens_algo(acl, sender_sk, txes):
+
     # TODO: You might want to adjust the first/last valid rounds in the suggested_params
     #       See guide for details
 
@@ -37,15 +34,18 @@ def send_tokens_algo( acl, sender_sk, txes):
     
     # TODO: Return a list of transaction id's
 
+    params = acl.suggested_params
     sender_pk = account.address_from_private_key(sender_sk)
 
     tx_ids = []
-    for i,tx in enumerate(txes):
+
+    for i, tx in enumerate(txes):
         tx_amount = tx['sell_amount']
         receiver_pk = tx['receiver_pk']
-        params.last = params.first + 1000 - len(txes) + i
+         
         try:
             unsigned_tx = transaction.PaymentTxn(sender_pk, params, receiver_pk, tx_amount)
+            # sign = transaction.PaymentTxn(address,tx_fee,first_valid_round,last_valid_round,gen_hash,receiver_pk,tx_amount).sign(private_key) # sign the transaction with secret key
         except Exception as e:
             import traceback
             print(traceback.format_exc())
@@ -143,7 +143,6 @@ def send_tokens_eth(w3,sender_sk,txes):
     tx_ids = []
     for i,tx in enumerate(txes):
         # Your code here
-        # continue
         tx_dict = {
             'nonce': starting_nonce + i,
             'gasPrice': w3.eth.gas_price,

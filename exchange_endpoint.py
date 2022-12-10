@@ -13,9 +13,13 @@ import math
 import sys
 import traceback
 
+# Generating key-pairs for the exchange on both the Ethereum and Algorand platforms
+# Checking to see if an order is accompanied by a payment into the Exchange’s account
+# Executing transactions on both blockchains when orders are matched (filled)
+# Recording the executed transactions in the table ‘TX’ (see models.py)
+
 # TODO: make sure you implement connect_to_algo, send_tokens_algo, and send_tokens_eth
 from send_tokens import connect_to_algo, connect_to_eth, send_tokens_algo, send_tokens_eth
-
 from models import Base, Order, TX, Log
 engine = create_engine('sqlite:///orders.db')
 Base.metadata.bind = engine
@@ -67,7 +71,7 @@ def connect_to_blockchains():
         print(traceback.format_exc())
         g.icl = connect_to_algo(connection_type='indexer')
 
-        
+
     try:
         w3_flag = False
         g.w3
@@ -90,9 +94,8 @@ def log_message(message_dict):
     msg = json.dumps(message_dict)
 
     # TODO: Add message to the Log table
-    g.session.add(Log(logtime=datetime.now(), message = msg))
-    g.session.commit()
-    # return
+    g.session.add(Log(logtime=datetime.now(), message = msg)) # INSERT THE ITEM WITH CURRENT TIME & MSG
+    g.session.commit()  # COMMIT THE MESSAGE
 
 def get_algo_keys():
     
@@ -117,8 +120,8 @@ def get_eth_keys(filename = "eth_mnemonic.txt"):
     
     # TODO: Generate or read (using the mnemonic secret) 
     # the ethereum public/private keys
-    eth_pk = '0xDEB9f99bB530Fa37C4ad934C96280a3fc28a5219'
     eth_sk = '0xf1d1155d46e1a06a24d6e0ebb3384d7df5bae10f480079e43032f77e0a683881'
+    eth_pk = '0xDEB9f99bB530Fa37C4ad934C96280a3fc28a5219'
 
     return eth_sk, eth_pk
   
@@ -187,7 +190,6 @@ def fill_order(order, txes=[]):
 
             g.session.add(create_order)
             g.session.commit()
-            # process_order(create_order)
                 
         else:
             g.session.commit()
@@ -196,15 +198,14 @@ def fill_order(order, txes=[]):
         current_txe = {
             'platform': order.buy_currency,'receiver_pk': order.receiver_pk, 'order_id': order.id, 'sell_amount' : order.sell_amount
         }
-        txes.append(current_txe)
+        txes.append(current_txe) # APPEND CURRENT TXE
 
         existing_txe = {
             'platform': existing_order.buy_currency,'receiver_pk': existing_order.receiver_pk, 'order_id': existing_order.id , 'sell_amount' : existing_order.buy_amount
         }
-        txes.append(existing_txe)
+        txes.append(existing_txe) # APPEND EXISTING TXE
 
         return txes
-    # pass
   
 def execute_txes(txes):
     if txes is None:
@@ -250,52 +251,45 @@ def execute_txes(txes):
             print(e)
         g.session.commit()
 
-
-    #for order in algo_txes:
-    #acl = connect_to_algo()
     try:
         alo_tx_ids = send_tokens_algo(g.acl, algo_sk, algo_txes)
     except Exception as e:
         import traceback
         print(traceback.format_exc())
         print(e)
+
     for tx_id,tx in zip(alo_tx_ids, algo_txes):
         txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'],
                  order_id=tx['order_id'], tx_id=tx['tx_id'])
         g.session.add(txe)
         g.session.commit()
 
-    # pass
-
-
 def verify_sig(sig, payload):
+        
+    sender_pk = payload['sender_pk'] # payload - sender_pk
+    platform = payload['platform'] # payload - platform
+    payload = json.dumps(payload)
 
-    sender_pk = payload['pk']  # public key
-    platform = payload['platform']  # type of crypto
-    payload = json.dumps(payload)  # the message
-
+    # Case 1: sig for Ethereum
     if platform == 'Ethereum':
         eth_encoded_msg = eth_account.messages.encode_defunct(text=payload)
+
         if eth_account.Account.recover_message(eth_encoded_msg,signature=sig) == sender_pk:
             result = True
-            print("ETH line 261 true")
         else:
             result = False
-            print("ETH line 264 False")
 
-        # verify sig for Algorand
+    # Case 2: sig for Algorand
     elif platform == 'Algorand':
+
         if algosdk.util.verify_bytes(payload.encode('utf-8'), sig, sender_pk):
             result = True
-            print("Algo line 270 True")
         else:
             result = False
-            print("Algo line 273 False")
-        # other crypto platform
+        
+    # Case 3: any other crypto platform
     else:
         result = False
-        print("line 277")
-
     return result
 
 """ End of Helper methods"""
@@ -355,7 +349,7 @@ def trade():
         if result == False:
             log_message(content)
             return jsonify(False)
-            print("line 333")
+            # print("line 333")
 
         else:
         
