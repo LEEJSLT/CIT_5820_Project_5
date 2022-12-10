@@ -16,7 +16,7 @@ import traceback
 # TODO: make sure you implement connect_to_algo, send_tokens_algo, and send_tokens_eth
 from send_tokens import connect_to_algo, connect_to_eth, send_tokens_algo, send_tokens_eth
 
-from models import Base, Order, TX
+from models import Base, Order, TX, Log
 engine = create_engine('sqlite:///orders.db')
 Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
@@ -90,13 +90,16 @@ def log_message(message_dict):
     msg = json.dumps(message_dict)
 
     # TODO: Add message to the Log table
-    
-    return
+    g.session.add(Log(logtime=datetime.now(), message = msg))
+    g.session.commit()
+    # return
 
 def get_algo_keys():
     
     # TODO: Generate or read (using the mnemonic secret) 
     # the algorand public/private keys
+    algo_sk = 
+    algo_pk = 
     
     return algo_sk, algo_pk
 
@@ -106,6 +109,8 @@ def get_eth_keys(filename = "eth_mnemonic.txt"):
     
     # TODO: Generate or read (using the mnemonic secret) 
     # the ethereum public/private keys
+    eth_pk = ''
+    eth_sk = ''
 
     return eth_sk, eth_pk
   
