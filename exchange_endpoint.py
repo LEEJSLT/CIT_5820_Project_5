@@ -40,6 +40,7 @@ def shutdown_session(response_or_exc):
     g.session.remove()
 
 def connect_to_blockchains():
+    # connect to alg - 
     try:
         # If g.acl has not been defined yet, then trying to query it fails
         acl_flag = False
@@ -56,6 +57,7 @@ def connect_to_blockchains():
         print(traceback.format_exc())
         g.acl = connect_to_algo()
     
+    # connect to alg - indexer
     try:
         icl_flag = False
         g.icl
@@ -71,7 +73,7 @@ def connect_to_blockchains():
         print(traceback.format_exc())
         g.icl = connect_to_algo(connection_type='indexer')
 
-
+    # connect to eth
     try:
         w3_flag = False
         g.w3
@@ -229,10 +231,11 @@ def execute_txes(txes):
     #          We've provided the send_tokens_algo and send_tokens_eth skeleton methods in send_tokens.py
     #       2. Add all transactions to the TX table
     
-    print('txes', txes)
-    print(algo_txes)
-    print(eth_txes)
-
+    # print('txes', txes)
+    # print(algo_txes)
+    # print(eth_txes)
+    
+    # Ethereum
     try:
         eth_tx_ids = send_tokens_eth(g.w3, eth_sk, eth_txes)
     except Exception as e:
@@ -240,9 +243,8 @@ def execute_txes(txes):
         print(traceback.format_exc())
         print(e)
 
-    for tx_id,tx in zip(eth_tx_ids, eth_txes):
-        txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'],
-                 order_id=tx['order_id'], tx_id=tx['tx_id'])
+    for tx_id, tx in zip(eth_tx_ids, eth_txes):
+        txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'], order_id=tx['order_id'], tx_id=tx['tx_id'])
         try:
             g.session.add(txe)
         except Exception as e:
@@ -251,6 +253,7 @@ def execute_txes(txes):
             print(e)
         g.session.commit()
 
+    # Algorand
     try:
         alo_tx_ids = send_tokens_algo(g.acl, algo_sk, algo_txes)
     except Exception as e:
@@ -259,8 +262,7 @@ def execute_txes(txes):
         print(e)
 
     for tx_id,tx in zip(alo_tx_ids, algo_txes):
-        txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'],
-                 order_id=tx['order_id'], tx_id=tx['tx_id'])
+        txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'], order_id=tx['order_id'], tx_id=tx['tx_id'])
         g.session.add(txe)
         g.session.commit()
 
@@ -270,18 +272,16 @@ def verify_sig(sig, payload):
     platform = payload['platform'] # payload - platform
     payload = json.dumps(payload)
 
-    # Case 1: sig for Ethereum
+    # Case 1: Ethereum
     if platform == 'Ethereum':
         eth_encoded_msg = eth_account.messages.encode_defunct(text=payload)
-
         if eth_account.Account.recover_message(eth_encoded_msg,signature=sig) == sender_pk:
             result = True
         else:
             result = False
 
-    # Case 2: sig for Algorand
+    # Case 2: Algorand
     elif platform == 'Algorand':
-
         if algosdk.util.verify_bytes(payload.encode('utf-8'), sig, sender_pk):
             result = True
         else:
@@ -368,27 +368,22 @@ def trade():
                 return jsonify(False)
 
             else:
-
-                current_order = Order(sender_pk=sender_pk, receiver_pk=receiver_pk, buy_currency=buy_currency,
-                                      sell_currency=sell_currency, buy_amount=buy_amount, sell_amount=sell_amount,
-                                      tx_id=tx_id, signature=signature)
-
-                g.session.add(current_order)
-                g.session.commit()
-                current_txes = fill_order(current_order)
-                print("line 350")    
-                execute_txes(current_txes)
-                print("line 357")  
-
         # 3a. Check if the order is backed by a transaction equal to the sell_amount (this is new)
 
         # 3b. Fill the order (as in Exchange Server II) if the order is valid
+                current_order = Order(sender_pk=sender_pk, receiver_pk=receiver_pk, buy_currency=buy_currency, sell_currency=sell_currency, buy_amount=buy_amount, sell_amount=sell_amount, tx_id=tx_id, signature=signature)
+                g.session.add(current_order)
+                g.session.commit()
+                current_txes = fill_order(current_order)
         
         # 4. Execute the transactions
+                execute_txes(current_txes)
         
         # If all goes well, return jsonify(True). else return jsonify(False)
         if result == True:
             return jsonify(True)
+        else:
+            return jsonify(False)
 
 @app.route('/order_book')
 def order_book():
