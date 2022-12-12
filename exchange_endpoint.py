@@ -96,8 +96,9 @@ def log_message(message_dict):
     msg = json.dumps(message_dict)
 
     # TODO: Add message to the Log table
-    g.session.add(Log(logtime=datetime.now(), message = msg)) # INSERT THE ITEM WITH CURRENT TIME & MSG
+    g.session.add(Log(message = msg))
     g.session.commit()  # COMMIT THE MESSAGE
+    return
 
 def get_algo_keys():
     
@@ -235,36 +236,54 @@ def execute_txes(txes):
     # print(algo_txes)
     # print(eth_txes)
     
-    # Ethereum
-    try:
-        eth_tx_ids = send_tokens_eth(g.w3, eth_sk, eth_txes)
-    except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        print(e)
+    # # Ethereum
+    # try:
+    #     eth_tx_ids = send_tokens_eth(g.w3, eth_sk, eth_txes)
+    # except Exception as e:
+    #     import traceback
+    #     print(traceback.format_exc())
+    #     print(e)
 
-    for tx_id, tx in zip(eth_tx_ids, eth_txes):
-        txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'], order_id=tx['order_id'], tx_id=tx['tx_id'])
-        try:
-            g.session.add(txe)
-        except Exception as e:
-            import traceback
-            print(traceback.format_exc())
-            print(e)
-        g.session.commit()
+    # for tx_id, tx in zip(eth_tx_ids, eth_txes):
+    #     txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'], order_id=tx['order_id'], tx_id=tx['tx_id'])
+    #     try:
+    #         g.session.add(txe)
+    #     except Exception as e:
+    #         import traceback
+    #         print(traceback.format_exc())
+    #         print(e)
+    #     g.session.commit()
 
-    # Algorand
-    try:
-        alo_tx_ids = send_tokens_algo(g.acl, algo_sk, algo_txes)
-    except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        print(e)
+    # # Algorand
+    # try:
+    #     alo_tx_ids = send_tokens_algo(g.acl, algo_sk, algo_txes)
+    # except Exception as e:
+    #     import traceback
+    #     print(traceback.format_exc())
+    #     print(e)
 
-    for tx_id,tx in zip(alo_tx_ids, algo_txes):
-        txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'], order_id=tx['order_id'], tx_id=tx['tx_id'])
-        g.session.add(txe)
-        g.session.commit()
+    # for tx_id,tx in zip(alo_tx_ids, algo_txes):
+    #     txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'], order_id=tx['order_id'], tx_id=tx['tx_id'])
+    #     g.session.add(txe)
+    #     g.session.commit()
+
+
+    if not all( tx['platform'] in ["Algorand","Ethereum"] for tx in txes ):
+        print( "Error: execute_txes got an invalid platform!" )
+        print( tx['platform'] for tx in txes )
+
+    algo_txes = [tx for tx in txes if tx['platform'] == "Algorand" ]
+    eth_txes = [tx for tx in txes if tx['platform'] == "Ethereum" ]
+
+    # TODO: 
+    #       1. Send tokens on the Algorand and eth testnets, appropriately
+    #          We've provided the send_tokens_algo and send_tokens_eth skeleton methods in send_tokens.py
+    #       2. Add all transactions to the TX table
+    send_tokens_algo(g.acl, algo_sk, algo_txes)
+    send_tokens_eth(g.w3, eth_sk, eth_txes)
+    g.session.add_all(algo_txes)
+    g.session.add_all(eth_txes)
+    g.session.commit()
 
 def verify_sig(sig, payload):
         
@@ -349,12 +368,12 @@ def trade():
         if result == False:
             log_message(content)
             return jsonify(False)
-            # print("line 333")
-
-        else:
         
         # 2. Add the order to the table
+        else:
             payload = content['payload']
+            signature = content['sig']
+
             sender_pk = payload['sender_pk']
             receiver_pk = payload['receiver_pk']
             buy_currency = payload['buy_currency']
@@ -362,7 +381,7 @@ def trade():
             buy_amount = payload['buy_amount']
             sell_amount = payload['sell_amount']
             tx_id = payload['tx_id']
-            signature = content['sig']
+            
             if buy_amount <= 0 or sell_amount <= 0 or receiver_pk is None:
                 log_message(content)
                 return jsonify(False)
@@ -371,12 +390,31 @@ def trade():
         # 3a. Check if the order is backed by a transaction equal to the sell_amount (this is new)
 
         # 3b. Fill the order (as in Exchange Server II) if the order is valid
-                current_order = Order(sender_pk=sender_pk, receiver_pk=receiver_pk, buy_currency=buy_currency, sell_currency=sell_currency, buy_amount=buy_amount, sell_amount=sell_amount, tx_id=tx_id, signature=signature)
-                g.session.add(current_order)
+                order = Order(sender_pk=sender_pk, receiver_pk=receiver_pk, buy_currency=buy_currency, sell_currency=sell_currency, buy_amount=buy_amount, sell_amount=sell_amount, tx_id=tx_id, signature=signature)
+                g.session.add(order)
                 g.session.commit()
-                current_txes = fill_order(current_order)
+                current_txes = fill_order(order)
         
         # 4. Execute the transactions
+                # execute_txes(current_txes)
+            if sell_currency == 'Ethereum':
+                tx = g.w3.eth.get_transaction(tx_id)
+                assert tx.value == sell_amount
+            elif sell_currency == 'Algorand':
+                tx = g.icl.search_transactions(txid=tx_id)
+                assert tx.amoutn == sell_amount
+            else:
+                pass
+            if (tx.platform!=tx.order.sell_currency or 
+                sell_amount!=tx.order.sell_amount or 
+                sender_pk!=tx.order.sender_pk or 
+                0):
+                return jsonify(False)
+            else:
+                # 3b. Fill the order (as in Exchange Server II) if the order is valid
+                pass
+                # 4. Execute the transactions
+
                 execute_txes(current_txes)
         
         # If all goes well, return jsonify(True). else return jsonify(False)

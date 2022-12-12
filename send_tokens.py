@@ -101,7 +101,6 @@ from web3.exceptions import TransactionNotFound
 import json
 import progressbar
 
-
 def connect_to_eth():
     IP_ADDR='3.23.118.2' #Private Ethereum
     PORT='8545'
