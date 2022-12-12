@@ -236,54 +236,54 @@ def execute_txes(txes):
     # print(algo_txes)
     # print(eth_txes)
     
-    # # Ethereum
-    # try:
-    #     eth_tx_ids = send_tokens_eth(g.w3, eth_sk, eth_txes)
-    # except Exception as e:
-    #     import traceback
-    #     print(traceback.format_exc())
-    #     print(e)
+    # Ethereum
+    try:
+        eth_tx_ids = send_tokens_eth(g.w3, eth_sk, eth_txes)
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        print(e)
 
-    # for tx_id, tx in zip(eth_tx_ids, eth_txes):
-    #     txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'], order_id=tx['order_id'], tx_id=tx['tx_id'])
-    #     try:
-    #         g.session.add(txe)
-    #     except Exception as e:
-    #         import traceback
-    #         print(traceback.format_exc())
-    #         print(e)
-    #     g.session.commit()
+    for tx_id, tx in zip(eth_tx_ids, eth_txes):
+        txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'], order_id=tx['order_id'], tx_id=tx['tx_id'])
+        try:
+            g.session.add(txe)
+        except Exception as e:
+            import traceback
+            print(traceback.format_exc())
+            print(e)
+        g.session.commit()
 
-    # # Algorand
-    # try:
-    #     alo_tx_ids = send_tokens_algo(g.acl, algo_sk, algo_txes)
-    # except Exception as e:
-    #     import traceback
-    #     print(traceback.format_exc())
-    #     print(e)
+    # Algorand
+    try:
+        alo_tx_ids = send_tokens_algo(g.acl, algo_sk, algo_txes)
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        print(e)
 
-    # for tx_id,tx in zip(alo_tx_ids, algo_txes):
-    #     txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'], order_id=tx['order_id'], tx_id=tx['tx_id'])
-    #     g.session.add(txe)
-    #     g.session.commit()
+    for tx_id,tx in zip(alo_tx_ids, algo_txes):
+        txe = TX(platform="Ethereum", receiver_pk=tx['receiver_pk'], order_id=tx['order_id'], tx_id=tx['tx_id'])
+        g.session.add(txe)
+        g.session.commit()
 
 
-    if not all( tx['platform'] in ["Algorand","Ethereum"] for tx in txes ):
-        print( "Error: execute_txes got an invalid platform!" )
-        print( tx['platform'] for tx in txes )
+    # if not all( tx['platform'] in ["Algorand","Ethereum"] for tx in txes ):
+    #     print( "Error: execute_txes got an invalid platform!" )
+    #     print( tx['platform'] for tx in txes )
 
-    algo_txes = [tx for tx in txes if tx['platform'] == "Algorand" ]
-    eth_txes = [tx for tx in txes if tx['platform'] == "Ethereum" ]
+    # algo_txes = [tx for tx in txes if tx['platform'] == "Algorand" ]
+    # eth_txes = [tx for tx in txes if tx['platform'] == "Ethereum" ]
 
-    # TODO: 
-    #       1. Send tokens on the Algorand and eth testnets, appropriately
-    #          We've provided the send_tokens_algo and send_tokens_eth skeleton methods in send_tokens.py
-    #       2. Add all transactions to the TX table
-    send_tokens_algo(g.acl, algo_sk, algo_txes)
-    send_tokens_eth(g.w3, eth_sk, eth_txes)
-    g.session.add_all(algo_txes)
-    g.session.add_all(eth_txes)
-    g.session.commit()
+    # # TODO: 
+    # #       1. Send tokens on the Algorand and eth testnets, appropriately
+    # #          We've provided the send_tokens_algo and send_tokens_eth skeleton methods in send_tokens.py
+    # #       2. Add all transactions to the TX table
+    # send_tokens_algo(g.acl, algo_sk, algo_txes)
+    # send_tokens_eth(g.w3, eth_sk, eth_txes)
+    # g.session.add_all(algo_txes)
+    # g.session.add_all(eth_txes)
+    # g.session.commit()
 
 def verify_sig(sig, payload):
         
